@@ -1,0 +1,31 @@
+# First test run details: https://gallo.pages.freedesktop.org/-/mesa/-/jobs/78930621/artifacts/results/test_result.html
+
+## First run result==fail
+
+x86_64 CtsGraphicsTestCases android.graphics.cts.VulkanFeaturesTest#testVulkanHardwareFeatures
+
+### Must support the core Vulkan 1.1
+x86_64 CtsGraphicsTestCases android.graphics.cts.VulkanFeaturesTest#testVulkanApplicationBinaryInterfaceRequirements
+
+### no support for ABP 2021
+x86_64 CtsGraphicsTestCases android.graphics.cts.VulkanFeaturesTest#testAndroidBaselineProfile2021Support
+
+## Mainly for testing platform features. Skip as take too long.
+x86_64 CtsDeqpTestCases dEQP-VK.wsi.android.incremental_present.*
+x86_64 CtsDeqpTestCases dEQP-VK.wsi.android.shared_presentable_image.*
+
+# Appears to cause crashes with Android 16
+x86_64 CtsGraphicsTestCases android.graphics.cts.SetFrameRateTest#testFixedSource_NonSeamless_arr
+
+# New failures with Android 16
+# Results from https://gitlab.freedesktop.org/Valentine/mesa/-/jobs/90662231
+# https://valentine.pages.freedesktop.org/-/mesa/-/jobs/90662231/artifacts/results/android-cts/results/test_result.html
+x86_64 CtsDeqpTestCases dEQP-VK.wsi.android.swapchain.create#image_format
+x86_64 CtsDeqpTestCases dEQP-VK.wsi.android.colorspace#basic
+x86_64 CtsDeqpTestCases dEQP-VK.wsi.android.swapchain.private_data#image_format
+x86_64 CtsDeqpTestCases dEQP-VK.wsi.android.colorspace_compare#r16g16b16a16_sfloat
+
+x86_64 CtsGraphicsTestCases android.graphics.fonts.SystemFontsTest#testFontsFallbackUnreadable[0]
+x86_64 CtsGraphicsTestCases android.graphics.fonts.SystemFontsTest#testAvailableFonts_ReadOnlyFile[0]
+
+x86_64 CtsNativeHardwareTestCases android.hardware.nativehardware.cts.AHardwareBufferNativeTests#AHardwareBufferTest_AllocateLockUnlockDeallocateStressTest
