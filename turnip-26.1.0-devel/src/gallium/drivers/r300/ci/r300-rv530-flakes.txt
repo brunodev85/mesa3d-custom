@@ -1,0 +1,2 @@
+glx@glx-buffer-age
+glx@glx-multithread-clearbuffer

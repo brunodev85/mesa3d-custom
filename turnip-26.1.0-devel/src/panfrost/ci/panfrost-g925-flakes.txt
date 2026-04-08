@@ -1,0 +1,35 @@
+dEQP-VK.api.command_buffers.record_many_draws_primary_2
+dEQP-VK.api.command_buffers.record_many_draws_secondary_1
+dEQP-VK.api.command_buffers.record_many_draws_secondary_2
+dEQP-VK.memory.pipeline_barrier.host_write_uniform_buffer.1048576
+dEQP-VK.memory.pipeline_barrier.host_write_uniform_texel_buffer.1048576
+dEQP-VK.memory.pipeline_barrier.transfer_dst_uniform_buffer.1048576
+dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.buffer_size_2_24
+dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_copy_src_alloc_none_16777216
+
+# deqp-vk: ../src/panfrost/vulkan/panvk_image.c:346: panvk_image_get_mod_from_list: Assertion `!"Invalid modifier"' failed.
+dEQP-VK.wsi.wayland.swapchain.create.image_extent
+dEQP-VK.wsi.wayland.swapchain.simulate_oom.image_extent
+
+# https://gerrit.khronos.org/c/vk-gl-cts/+/19859
+dEQP-VK.wsi.xcb.maintenance1.present_modes.*
+dEQP-VK.wsi.xcb.maintenance1.present_fence.*
+
+angle-dEQP-GLES3.functional.multisample.fbo_4_samples.proportionality_sample_coverage
+angle-dEQP-GLES3.functional.multisample.fbo_max_samples.constancy_alpha_to_coverage
+angle-KHR-GLES31.core.compute_shader.sso-case2
+angle-KHR-GLES31.core.shader_image_load_store.basic-allTargets-atomicCS
+angle-KHR-GLES31.core.shader_image_load_store.basic-allTargets-loadStoreVS
+angle-multisample-dEQP-GLES31.functional.draw_indirect.compute_interop.large.drawelements_combined_grid_500x500_drawcount_2500
+angle-multisample-dEQP-GLES31.functional.draw_indirect.compute_interop.large.drawelements_combined_grid_1000x1000_drawcount_1
+angle-multisample-dEQP-GLES31.functional.draw_indirect.compute_interop.large.drawelements_separate_grid_500x500_drawcount_1
+angle-multisample-dEQP-GLES31.functional.draw_indirect.compute_interop.large.drawelements_separate_grid_500x500_drawcount_8
+angle-multisample-dEQP-GLES31.functional.draw_indirect.compute_interop.large.drawelements_separate_grid_500x500_drawcount_2500
+angle-multisample-dEQP-GLES31.functional.draw_indirect.compute_interop.large.drawelements_separate_grid_1200x1200_drawcount_1
+angle-multisample-dEQP-GLES31.functional.draw_indirect.compute_interop.large.drawelements_separate_grid_1500x1500_drawcount_1
+
+# Appears just beforehand:
+# 19:50:56.843: [   92.880197] panthor 48000000.gpu: [drm] *ERROR* CSG 7 update request timedout
+# 19:50:56.843: [   92.988186] panthor 48000000.gpu: [drm] *ERROR* CSG 7 update request timedout
+# 19:50:56.843: [   92.995306] panthor 48000000.gpu: [drm] *ERROR* CSG suspend failed, escalating to termination
+dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_copy_src_alloc_partial_16777216

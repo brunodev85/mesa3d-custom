@@ -1,0 +1,5 @@
+# See https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/9049
+dEQP-VK.pipeline.timestamp.calibrated.calibration_test,Fail
+
+dEQP-VK.wsi.direct_drm.incremental_present.scale_none.fifo.identity.opaque.reference,Fail
+dEQP-VK.wsi.direct_drm.incremental_present.scale_none.fifo.identity.opaque.incremental_present,Fail
