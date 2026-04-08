@@ -1962,6 +1962,13 @@ tu_GetPhysicalDeviceQueueFamilyProperties2(
 uint64_t
 tu_get_system_heap_size(struct tu_physical_device *physical_device)
 {
+   uint64_t available_ram;
+   const char* override_heap_size = getenv("TU_OVERRIDE_HEAP_SIZE");
+   if (override_heap_size) {
+      available_ram = (uint64_t) strtol(override_heap_size, NULL, 10) << 20;
+      return available_ram;
+   }    
+
    uint64_t total_ram = 0;
    ASSERTED bool has_physical_memory =
       os_get_total_physical_memory(&total_ram);
@@ -1970,7 +1977,6 @@ tu_get_system_heap_size(struct tu_physical_device *physical_device)
    /* We don't want to burn too much ram with the GPU.  If the user has 4GiB
     * or less, we use at most half.  If they have more than 4GiB, we use 3/4.
     */
-   uint64_t available_ram;
    if (total_ram <= 4ull * 1024ull * 1024ull * 1024ull)
       available_ram = total_ram / 2;
    else

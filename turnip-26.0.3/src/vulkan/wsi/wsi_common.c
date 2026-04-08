@@ -43,6 +43,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <bits/pthreadtypes.h>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -60,6 +61,31 @@ static const struct debug_control debug_control[] = {
    { NULL, },
 };
 
+#if defined(HAVE_PTHREAD) && !defined(_WIN32)
+bool
+wsi_init_pthread_cond_monotonic(pthread_cond_t* cond){
+   pthread_condattr_t condattr;
+   bool ret = false;
+
+   if(pthread_condattr_init(&condattr) != 0)
+      goto fail_attr_init;
+
+   if (pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC) != 0)
+      goto fail_attr_set;
+
+   if (pthread_cond_init(cond, &condattr) != 0)
+      goto fail_cond_init;
+
+   ret = true;
+
+   fail_cond_init:
+   fail_attr_set:
+      pthread_condattr_destroy(&condattr);
+   fail_attr_init:
+      return ret;
+}
+#endif
+
 static bool present_false(VkPhysicalDevice pdevice, int fd) {
    return false;
 }
@@ -74,6 +100,7 @@ wsi_device_init(struct wsi_device *wsi,
                 const struct wsi_device_options *device_options)
 {
    const char *present_mode;
+   const char *force_wait_for_fences;
    UNUSED VkResult result;
 
    WSI_DEBUG = parse_debug_string(os_get_option("MESA_VK_WSI_DEBUG"), debug_control);
@@ -86,6 +113,10 @@ wsi_device_init(struct wsi_device *wsi,
    wsi->pdevice = pdevice;
    wsi->supports_scanout = true;
    wsi->sw = device_options->sw_device || (WSI_DEBUG & WSI_DEBUG_SW);
+
+   force_wait_for_fences = getenv("MESA_VK_WSI_FORCE_WAIT_FOR_FENCES");
+   wsi->force_wait_for_fences = force_wait_for_fences && (!strcmp(force_wait_for_fences, "true") || !strcmp(force_wait_for_fences, "1"));
+
    wsi->wants_linear = (WSI_DEBUG & WSI_DEBUG_LINEAR) != 0;
    wsi->x11.extra_xwayland_image = device_options->extra_xwayland_image;
    wsi->wayland.disable_timestamps = (WSI_DEBUG & WSI_DEBUG_NOWLTS) != 0;
@@ -1775,7 +1806,7 @@ wsi_common_queue_present(const struct wsi_device *wsi,
 #endif
       }
 
-      if (wsi->sw) {
+      if (wsi->sw || wsi->force_wait_for_fences) {
          wsi->WaitForFences(vk_device_to_handle(dev),
                             1, &swapchain->fences[image_index], true, ~0ull);
       }
