@@ -106,6 +106,8 @@ struct wsi_image_info {
 
    bool prime_use_linear_modifier;
 
+   int hwbuf_fd;
+
    /* Not really part of VkImageCreateInfo but needed to figure out the
     * number of planes we need to bind.
     */

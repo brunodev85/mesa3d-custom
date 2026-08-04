@@ -43,10 +43,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <xf86drm.h>
+#include <sys/mman.h>
+
+#define NO_DMA_BUF_SYNC_FILE 1
 
 static VkResult
 wsi_dma_buf_export_sync_file(int dma_buf_fd, int *sync_file_fd)
 {
+#ifdef NO_DMA_BUF_SYNC_FILE
+   return VK_ERROR_FEATURE_NOT_PRESENT;
+#else
    struct dma_buf_export_sync_file export = {
       .flags = DMA_BUF_SYNC_RW,
       .fd = -1,
@@ -64,11 +70,15 @@ wsi_dma_buf_export_sync_file(int dma_buf_fd, int *sync_file_fd)
    *sync_file_fd = export.fd;
 
    return VK_SUCCESS;
+#endif
 }
 
 static VkResult
 wsi_dma_buf_import_sync_file(int dma_buf_fd, int sync_file_fd)
 {
+#ifdef NO_DMA_BUF_SYNC_FILE
+   return VK_ERROR_FEATURE_NOT_PRESENT;
+#else
    struct dma_buf_import_sync_file import = {
       .flags = DMA_BUF_SYNC_RW,
       .fd = sync_file_fd,
@@ -84,6 +94,7 @@ wsi_dma_buf_import_sync_file(int dma_buf_fd, int sync_file_fd)
    }
 
    return VK_SUCCESS;
+#endif
 }
 
 /**
@@ -750,73 +761,119 @@ wsi_create_native_image_mem(const struct wsi_swapchain *chain,
    VkMemoryRequirements reqs;
    wsi->GetImageMemoryRequirements(chain->device, image->image, &reqs);
 
-   const struct wsi_memory_allocate_info memory_wsi_info = {
-      .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA,
-      .pNext = NULL,
-      /* Ask for the driver to add implicit sync to the image if we're not
-       * handling implict sync ourselves.
-       */
-      .implicit_sync = !info->explicit_sync && !chain->dma_buf_semaphore,
-      .dma_buf_sync_file = chain->dma_buf_semaphore,
-   };
-   const VkExportMemoryAllocateInfo memory_export_info = {
-      .sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO,
-      .pNext = &memory_wsi_info,
-      .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
-   };
-   const VkMemoryDedicatedAllocateInfo memory_dedicated_info = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
-      .pNext = &memory_export_info,
-      .image = image->image,
-      .buffer = VK_NULL_HANDLE,
-   };
-   const VkMemoryAllocateInfo memory_info = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-      .pNext = &memory_dedicated_info,
-      .allocationSize = reqs.size,
-      .memoryTypeIndex =
-         wsi_select_device_memory_type(wsi, reqs.memoryTypeBits),
-   };
-   result = wsi->AllocateMemory(chain->device, &memory_info,
-                                &chain->alloc, &image->memory);
-   if (result != VK_SUCCESS)
-      return result;
-
-   result = wsi_init_image_dmabuf_fd(chain, image, false);
-   if (result != VK_SUCCESS)
-      return result;
-
-   if (info->drm_mod_list.drmFormatModifierCount > 0) {
-      VkImageDrmFormatModifierPropertiesEXT image_mod_props = {
-         .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT,
+   if (info->hwbuf_fd <= 0) {
+      const struct wsi_memory_allocate_info memory_wsi_info = {
+         .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA,
+         .pNext = NULL,
+         /* Ask for the driver to add implicit sync to the image if we're not
+          * handling implict sync ourselves.
+          */
+         .implicit_sync = !info->explicit_sync && !chain->dma_buf_semaphore,
+         .dma_buf_sync_file = chain->dma_buf_semaphore,
       };
-      result = wsi->GetImageDrmFormatModifierPropertiesEXT(chain->device,
-                                                           image->image,
-                                                           &image_mod_props);
+      const VkExportMemoryAllocateInfo memory_export_info = {
+         .sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO,
+         .pNext = &memory_wsi_info,
+         .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+      };
+      const VkMemoryDedicatedAllocateInfo memory_dedicated_info = {
+         .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+         .pNext = &memory_export_info,
+         .image = image->image,
+         .buffer = VK_NULL_HANDLE,
+      };
+      const VkMemoryAllocateInfo memory_info = {
+         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+         .pNext = &memory_dedicated_info,
+         .allocationSize = reqs.size,
+         .memoryTypeIndex =
+            wsi_select_device_memory_type(wsi, reqs.memoryTypeBits),
+      };
+      result = wsi->AllocateMemory(chain->device, &memory_info,
+                                   &chain->alloc, &image->memory);
       if (result != VK_SUCCESS)
          return result;
 
-      image->drm_modifier = image_mod_props.drmFormatModifier;
-      assert(image->drm_modifier != DRM_FORMAT_MOD_INVALID);
+      result = wsi_init_image_dmabuf_fd(chain, image, false);
+      if (result != VK_SUCCESS)
+         return result;
 
-      const struct VkDrmFormatModifierPropertiesEXT *mod_props =
-         get_modifier_props(info, image->drm_modifier);
-      image->num_planes = mod_props->drmFormatModifierPlaneCount;
+      if (info->drm_mod_list.drmFormatModifierCount > 0) {
+         VkImageDrmFormatModifierPropertiesEXT image_mod_props = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT,
+         };
+         result = wsi->GetImageDrmFormatModifierPropertiesEXT(chain->device,
+                                                              image->image,
+                                                              &image_mod_props);
+         if (result != VK_SUCCESS)
+            return result;
 
-      for (uint32_t p = 0; p < image->num_planes; p++) {
+         image->drm_modifier = image_mod_props.drmFormatModifier;
+         assert(image->drm_modifier != DRM_FORMAT_MOD_INVALID);
+
+         const struct VkDrmFormatModifierPropertiesEXT *mod_props =
+            get_modifier_props(info, image->drm_modifier);
+         image->num_planes = mod_props->drmFormatModifierPlaneCount;
+
+         for (uint32_t p = 0; p < image->num_planes; p++) {
+            const VkImageSubresource image_subresource = {
+               .aspectMask = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT << p,
+               .mipLevel = 0,
+               .arrayLayer = 0,
+            };
+            VkSubresourceLayout image_layout;
+            wsi->GetImageSubresourceLayout(chain->device, image->image,
+                                           &image_subresource, &image_layout);
+            image->sizes[p] = image_layout.size;
+            image->row_pitches[p] = image_layout.rowPitch;
+            image->offsets[p] = image_layout.offset;
+         }
+      } else {
          const VkImageSubresource image_subresource = {
-            .aspectMask = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT << p,
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             .mipLevel = 0,
             .arrayLayer = 0,
          };
          VkSubresourceLayout image_layout;
          wsi->GetImageSubresourceLayout(chain->device, image->image,
                                         &image_subresource, &image_layout);
-         image->sizes[p] = image_layout.size;
-         image->row_pitches[p] = image_layout.rowPitch;
-         image->offsets[p] = image_layout.offset;
+
+         image->drm_modifier = DRM_FORMAT_MOD_INVALID;
+         image->num_planes = 1;
+         image->sizes[0] = reqs.size;
+         image->row_pitches[0] = image_layout.rowPitch;
+         image->offsets[0] = 0;
       }
    } else {
+      const struct wsi_memory_allocate_info memory_wsi_info = {
+         .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA,
+         .pNext = NULL,
+         .implicit_sync = true,
+      };
+      const VkImportMemoryFdInfoKHR memory_import_info = {
+         .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR,
+         .pNext = &memory_wsi_info,
+         .fd = os_dupfd_cloexec(info->hwbuf_fd),
+         .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT
+      };
+      const VkMemoryDedicatedAllocateInfo memory_dedicated_info = {
+         .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+         .pNext = &memory_import_info,
+         .image = image->image,
+         .buffer = VK_NULL_HANDLE,
+      };
+      const VkMemoryAllocateInfo memory_info = {
+         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+         .pNext = &memory_dedicated_info,
+         .allocationSize = reqs.size,
+         .memoryTypeIndex =
+             wsi_select_device_memory_type(wsi, reqs.memoryTypeBits),
+      };
+      result = wsi->AllocateMemory(chain->device, &memory_info,
+                                   &chain->alloc, &image->memory);
+      if (result != VK_SUCCESS)
+         return result;
+
       const VkImageSubresource image_subresource = {
          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
          .mipLevel = 0,
